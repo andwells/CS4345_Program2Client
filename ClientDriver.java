@@ -5,7 +5,7 @@
  *
  * Description: Driver for the client side of the chat program. Includes GUI and interaction
  */
-package gui;
+
 
 import java.awt.Color;
 import java.awt.Dimension;
@@ -22,6 +22,8 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -50,7 +52,7 @@ public class ClientDriver {
 		createAndShowMainGUI();
 		
 		// This method is for testing the JList functionality, this can be deleted after the SwingWorker changes have been implemented
-		populateMemberList();
+		//populateMemberList();
 		
 		sock = new Socket(serverName, 50000);
 		
@@ -272,7 +274,10 @@ public class ClientDriver {
 			try {
 				while (true) {// Run until communication with server is interrupted
 					String message = data4server.readUTF();
-					publish("\n" + message);
+					if(message.startsWith("/list:")){
+						listModel.clear();
+						buildList(message);
+					}
 				}
 			}
 			catch (IOException e) {
@@ -280,10 +285,20 @@ public class ClientDriver {
 			}
 			return null; // SwingWorker requires a return statement.
 		}
+		//Uses list from server to add elements to the JList sidepanel
+		private void buildList(String msg){
+			final Pattern pattern = Pattern.compile("/list:(.+?)/list");
+			final Matcher matcher = pattern.matcher(msg);
+			matcher.find();
+			String names[] = matcher.group(1).split(";");
+			for(String s: names){
+				listModel.addElement(s);
+			}
+		}
 		
 		protected void process (List<String> list) { // Append the message to the chatAreaTextPane
 			for (int index = 0; index < list.size(); index++) {
-				StyledDocument doc = textPane.getStyledDocument(); 
+				StyledDocument doc = textPane.getStyledDocument();
 				try {
 					doc.insertString(doc.getLength(), list.get(index) + "\n", null);
 				} catch (BadLocationException e) {
