@@ -21,6 +21,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.net.ConnectException;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -34,7 +35,7 @@ public class ClientDriver {
 
 	static DataOutputStream data2server;
 	static DataInputStream data4server;
-	static JFrame mainFrame, preFrame;
+	static JFrame mainFrame,preFrame;
 	static JTextPane chatAreaTextPane, messageBoxTextPane;
 	static JList<String> chatMembersList;
 	static DefaultListModel<String> listModel;
@@ -43,28 +44,10 @@ public class ClientDriver {
 	static String serverName;
 	private static Socket sock;
 	
-	public static void main(String[] args) throws UnknownHostException, IOException {
+	public static void main(String[] args){
 		
 		// prepare and display the first window that prompts for username and server name
 		createAndShowPreGUI();
-		
-		// prepare but do not display the second window that is the actual chat interface
-		createAndShowMainGUI();
-		
-		// This method is for testing the JList functionality, this can be deleted after the SwingWorker changes have been implemented
-		//populateMemberList();
-		
-		sock = new Socket(serverName, 50000);
-		
-		// Create an output stream to send data to the server
-		data2server = new DataOutputStream(sock.getOutputStream());
-		
-		// Create an input stream to receive data from the server
-		data4server = new DataInputStream(sock.getInputStream());
-		
-		// Start the Swing Worker on a thread to run in the background
-		Thread t2 = new Thread(new HandleServerOutput(chatAreaTextPane));
-		t2.start();
 	}
 	
 	// This method is purely for testing
@@ -135,6 +118,7 @@ public class ClientDriver {
 		
 		preFrame.getRootPane().setDefaultButton(joinButton); // Set the join button to be clickable by the ENTER key
 		preFrame.setVisible(true); 
+		
 	} // End creatAndShowPreGUI
 	
 	public static void createAndShowMainGUI(){
@@ -214,18 +198,51 @@ public class ClientDriver {
 			}
 			else {
 				try {
+					// prepare but do not display the second window that is the actual chat interface
+					createAndShowMainGUI();
+					
+					
+					sock = new Socket(serverName, 50000);
+					
+					// Create an output stream to send data to the server
+					data2server = new DataOutputStream(sock.getOutputStream());
+					
+					// Create an input stream to receive data from the server
+					data4server = new DataInputStream(sock.getInputStream());
+					
+					// Start the Swing Worker on a thread to run in the background
+					Thread t2 = new Thread(new HandleServerOutput(chatAreaTextPane));
+					t2.start();
+
+					//First piece of data that server is expecting is username
 					data2server.writeUTF(username);
-				} catch (IOException e) {
+				}
+				catch(UnknownHostException uhEx)//Could not find in DNS
+				{
+					JOptionPane.showMessageDialog(null, String.format("Could not locate host %s", serverName), "Error", JOptionPane.ERROR_MESSAGE);
+					System.exit(-1);
+				}
+				catch(ConnectException cEx)//If server cannot be reached (off, sleeping, firewall issue, etc.)
+				{
+					JOptionPane.showMessageDialog(null, String.format("Could not connect to host %s. Error Message: ", serverName, cEx.getMessage()), "Error", JOptionPane.ERROR_MESSAGE);
+					System.exit(-1);
+				}
+				catch (IOException e) {
 					e.printStackTrace();
 				}
+				
+				//Hid preFrame, show chat box
 				preFrame.setVisible(false);
 				mainFrame.setVisible(true);
+				
+				//Update title to reflect connection
+				mainFrame.setTitle(String.format("Connected to %s as %s", serverName, username));
 				messageBoxTextPane.requestFocusInWindow();
 			}
 		}
 	} // End joinChatButtonListener
 	
-	// The server name is set to 127.0.0.1
+	// The default server name is set to 127.0.0.1
 	static class defaultServerButtonListener implements ActionListener {
 
 		public void actionPerformed(ActionEvent arg0) {
@@ -277,6 +294,10 @@ public class ClientDriver {
 					if(message.startsWith("/list:")){
 						listModel.clear();
 						buildList(message);
+					}
+					else
+					{
+						publish(message);
 					}
 				}
 			}

@@ -1,12 +1,13 @@
 /**
- * Author: Max Carter
+ * Author: Max Carter, Robert Walker, Andrew Wells
+ * Course Number: CS4345
+ * Semester: Spring 2016
+ * Assignment: Program2
  * File Name: ErrorNoInformation.java
  * Date: 03/23/2016
  *
  * Description: GUI that pops up to display an error of username or server name
  */
-
-package gui;
 
 import java.awt.Color;
 import javax.swing.JFrame;
